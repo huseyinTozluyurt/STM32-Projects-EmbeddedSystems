@@ -9,8 +9,8 @@ The project is created in **STM32CubeIDE** and uses **HAL drivers**.
 
 ## 🔧 STM32CubeIDE Configuration
 
-<img width="1894" height="855" alt="configur" src="https://github.com/user-attachments/assets/11ef7746-81d5-4b9a-8e85-36fe9dd3c029" />
 
+<img width="1894" height="855" alt="configur" src="https://github.com/user-attachments/assets/50be2a4e-842b-4af7-a41c-4d77dcdeb494" />
 
 ### RCC
 - **High Speed Clock (HSE):** Crystal / Ceramic Resonator (8 MHz external crystal)  
@@ -76,7 +76,9 @@ ledButton/
   - Set CCR → keep ON for `on_ms`  
   - Reset CCR → keep OFF for `off_ms`  
 - Special steps include long ON/OFF durations or very dim LED levels.
-![demo](https://github.com/user-attachments/assets/b890c97b-fcca-4bf2-a0d3-aeaaa55f6af1)
+
+![demo](https://github.com/user-attachments/assets/eeca5503-4b42-4887-b467-2c57032c94d8)
+
 
 ### Example Sequence
 ```c
