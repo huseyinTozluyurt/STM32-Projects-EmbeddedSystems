@@ -83,3 +83,33 @@ while (1)
         HAL_Delay(400);
     }
 }
+```
+
+If button not pressed → keeps current PWM output.
+
+If button pressed → toggles between ADC-based LED dimming and fixed brightness.
+
+🚀 How to Run
+
+Open the project in STM32CubeIDE.
+
+Connect the Blue Pill to your PC via ST-Link (or compatible debugger).
+
+Build & flash the project.
+
+Turn the potentiometer → LED brightness changes.
+
+Press the button → switch between ADC mode and fixed PWM mode.
+
+## 📂 Repository Structure
+
+
+```text
+Project2/
+ ├── Core/          # Application source & headers
+ ├── Drivers/       # HAL drivers
+ ├── Startup/       # Startup assembly & linker script
+ ├── potProject.ioc # STM32CubeMX configuration
+ └── main.c         # Main application logic
+
+```
