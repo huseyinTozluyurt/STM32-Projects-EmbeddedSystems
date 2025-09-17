@@ -121,14 +121,9 @@ The display always shows:
 
 ## 🧪 Troubleshooting
 
-- **Blank OLED**  
-  - Check I²C address in `ssd1306.c` (often `0x3C`).  
-  - Verify `I2C1` is at 400 kHz and pull-ups exist (board or module).  
-- **Nonsense temperature**  
-  - DHT11 has strict timing; keep `TIM1` at 1 MHz as configured.  
-  - Ensure the data line pull-up and wiring length are reasonable.  
-- **Buttons bounce / repeat**  
-  - Debounce delays are included; adjust in `HandleButtons()` if needed.
+<img width="1895" height="828" alt="clock" src="https://github.com/user-attachments/assets/e9e4585e-9e01-4cb2-8db0-406de1135d46" />
+
+Set HCLK (MHz) as 72 instead of 1 from Clock Configuration window.
 
 ---
 
