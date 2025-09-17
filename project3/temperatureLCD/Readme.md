@@ -130,4 +130,4 @@ Set HCLK (MHz) as 72 instead of 1 from Clock Configuration window.
 
 ## 📜 License
 
-This project is based on STM32Cube HAL templates. See the repository’s `LICENSE` if present.
+This project is based on STM32Cube HAL templates.
