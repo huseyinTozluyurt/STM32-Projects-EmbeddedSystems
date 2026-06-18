@@ -22,6 +22,8 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "hcsr04.h"
+#include <stdio.h>
+#include <string.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -54,11 +56,11 @@ UART_HandleTypeDef huart1;
 
 
 
-#define BIN_LED0_PORT GPIOB
-#define BIN_LED0_PIN  GPIO_PIN_6   // Least significant bit
+#define BIN_LED0_PORT GPIOA
+#define BIN_LED0_PIN  GPIO_PIN_5   // Least significant bit
 
-#define BIN_LED1_PORT GPIOB
-#define BIN_LED1_PIN  GPIO_PIN_7   // Most significant bit
+#define BIN_LED1_PORT GPIOA
+#define BIN_LED1_PIN  GPIO_PIN_6  // Most significant bit
 
 
 
@@ -139,6 +141,25 @@ void Set_Binary_LEDs(uint8_t value)
         HAL_GPIO_WritePin(BIN_LED1_PORT, BIN_LED1_PIN, GPIO_PIN_RESET);
     }
 }
+
+
+void Print_Sensor_Readings(void)
+{
+    char msg[200];
+
+    snprintf(msg, sizeof(msg),
+             "Front: %lu cm [%s] | Left: %lu cm [%s] | Right: %lu cm [%s] | Back: %lu cm [%s]\r\n",
+             hcsr04_sensors[0].distance_cm,
+             hcsr04_sensors[0].status == HCSR04_OK ? "OK" : "ERR",
+             hcsr04_sensors[1].distance_cm,
+             hcsr04_sensors[1].status == HCSR04_OK ? "OK" : "ERR",
+             hcsr04_sensors[2].distance_cm,
+             hcsr04_sensors[2].status == HCSR04_OK ? "OK" : "ERR",
+             hcsr04_sensors[3].distance_cm,
+             hcsr04_sensors[3].status == HCSR04_OK ? "OK" : "ERR");
+
+    HAL_UART_Transmit(&huart1, (uint8_t*)msg, strlen(msg), HAL_MAX_DELAY);
+}
 /* USER CODE END 0 */
 
 /**
@@ -174,6 +195,7 @@ int main(void)
   MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
   HCSR04_Init(&htim2);
+  Set_Binary_LEDs(0);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -184,10 +206,21 @@ int main(void)
 
 
 
+
+
 	  HCSR04_Read_All(hcsr04_sensors, SENSOR_COUNT);
 
-	  uint8_t obstacle_detected = 0;
+	  uint8_t front_back_obstacle = 0;
+	  uint8_t left_right_obstacle = 0;
 	  uint8_t sensor_error = 0;
+
+	  /*
+	   * Sensor index mapping:
+	   * 0 = Front
+	   * 1 = Left
+	   * 2 = Right
+	   * 3 = Back
+	   */
 
 	  for (uint8_t i = 0; i < SENSOR_COUNT; i++)
 	  {
@@ -195,39 +228,68 @@ int main(void)
 	      {
 	          sensor_error = 1;
 	      }
-	      else if (hcsr04_sensors[i].distance_cm <= OBSTACLE_THRESHOLD_CM)
-	      {
-	          obstacle_detected = 1;
-	      }
 	  }
+
+	  if (hcsr04_sensors[0].status == HCSR04_OK &&
+	      hcsr04_sensors[0].distance_cm <= OBSTACLE_THRESHOLD_CM)
+	  {
+	      front_back_obstacle = 1;
+	  }
+
+	  if (hcsr04_sensors[3].status == HCSR04_OK &&
+	      hcsr04_sensors[3].distance_cm <= OBSTACLE_THRESHOLD_CM)
+	  {
+	      front_back_obstacle = 1;
+	  }
+
+	  if (hcsr04_sensors[1].status == HCSR04_OK &&
+	      hcsr04_sensors[1].distance_cm <= OBSTACLE_THRESHOLD_CM)
+	  {
+	      left_right_obstacle = 1;
+	  }
+
+	  if (hcsr04_sensors[2].status == HCSR04_OK &&
+	      hcsr04_sensors[2].distance_cm <= OBSTACLE_THRESHOLD_CM)
+	  {
+	      left_right_obstacle = 1;
+	  }
+
+	  /*
+	   * Binary LED status:
+	   *
+	   * PA6 PA5
+	   *  0   0  = 00 = no obstacle
+	   *  0   1  = 01 = front/back obstacle
+	   *  1   0  = 10 = left/right obstacle
+	   *  1   1  = 11 = sensor error or obstacle on both groups
+	   */
 
 	  if (sensor_error)
 	  {
-	      /*
-	       * Slow blink means at least one sensor failed.
-	       */
-	      HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13);
-	      HAL_Delay(500);
+	      Set_Binary_LEDs(3);   // 11
 	  }
-	  else if (obstacle_detected)
+	  else if (front_back_obstacle && left_right_obstacle)
 	  {
-	      /*
-	       * Fast blink means obstacle detected within threshold.
-	       */
-	      HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13);
-	      HAL_Delay(100);
+	      Set_Binary_LEDs(3);   // 11
+	  }
+	  else if (left_right_obstacle)
+	  {
+	      Set_Binary_LEDs(2);   // 10
+	  }
+	  else if (front_back_obstacle)
+	  {
+	      Set_Binary_LEDs(1);   // 01
 	  }
 	  else
 	  {
-	      /*
-	       * No obstacle.
-	       *
-	       * PC13 onboard LED on Blue Pill is usually active-low:
-	       * GPIO_PIN_SET = LED OFF
-	       */
-	      HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_SET);
-	      HAL_Delay(100);
+	      Set_Binary_LEDs(0);   // 00
 	  }
+
+	  Print_Sensor_Readings();
+
+	  HAL_Delay(300);
+
+
 
 
 
@@ -364,23 +426,31 @@ static void MX_GPIO_Init(void)
   /* USER CODE END MX_GPIO_Init_1 */
 
   /* GPIO Ports Clock Enable */
+  __HAL_RCC_GPIOD_CLK_ENABLE();
   __HAL_RCC_GPIOA_CLK_ENABLE();
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0|GPIO_PIN_1|GPIO_PIN_10|GPIO_PIN_11
-                          |GPIO_PIN_6|GPIO_PIN_7, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5|GPIO_PIN_6, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0|GPIO_PIN_1|GPIO_PIN_10|GPIO_PIN_11, GPIO_PIN_RESET);
 
   /*Configure GPIO pins : PA0 PA1 PA2 PA3 */
   GPIO_InitStruct.Pin = GPIO_PIN_0|GPIO_PIN_1|GPIO_PIN_2|GPIO_PIN_3;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Pull = GPIO_PULLDOWN;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : PB0 PB1 PB10 PB11
-                           PB6 PB7 */
-  GPIO_InitStruct.Pin = GPIO_PIN_0|GPIO_PIN_1|GPIO_PIN_10|GPIO_PIN_11
-                          |GPIO_PIN_6|GPIO_PIN_7;
+  /*Configure GPIO pins : PA5 PA6 */
+  GPIO_InitStruct.Pin = GPIO_PIN_5|GPIO_PIN_6;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : PB0 PB1 PB10 PB11 */
+  GPIO_InitStruct.Pin = GPIO_PIN_0|GPIO_PIN_1|GPIO_PIN_10|GPIO_PIN_11;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
